@@ -42,7 +42,7 @@ def generate(
 @app.command()
 def version():
     """Show version info."""
-    print("Ursa DSP v0.1.0")
+    print("Ursa DSP v0.2.0")
 
 if __name__ == "__main__":
     app()
