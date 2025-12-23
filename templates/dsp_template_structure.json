@@ -1,0 +1,66 @@
+[
+  {
+    "title": "Instructions",
+    "body": "This document should be completed by the Unit Information Security Lead (UISL) or Unit IT Director. It will be reviewed by an ISO team member (\"ISO Assessor\").\n\nThe Lab Director and/or researchers are responsible for providing data security requirements to the UISL or Unit IT Director.\nThe Unit IT Service Provider is responsible for determining and implementing technical solutions.\n\nThe technical solution must meet or exceed the UC IS-3 policy (https://policy.ucop.edu/doc/7000543/BFB-IS-3), UC Minimum Security Standard (https://security.ucop.edu/files/documents/policies/minimum-security-standard.pdf) and the standard required by the external party.\n\nThe UC IS-3 policy requires all researchers to \"develop and follow an information security plan that manages security risk over the course of their project.\"\n\nEach section contains IS-3 requirements and example controls. Units should complete the controls to meet or exceed all data security requirements. Controls implemented to meet external party requirements should be listed in the appropriate rows.\n\nIf you have any questions regarding this form, contact the Information Security Office Risk Team at iso-risk@ucr.edu."
+  },
+  {
+    "title": "Research Project Data Security Plan",
+    "body": ""
+  },
+  {
+    "title": "Revision History",
+    "body": ""
+  },
+  {
+    "title": "Table of Contents",
+    "body": ""
+  },
+  {
+    "title": "Executive Summary",
+    "body": "[Summary of the Research and Security Controls being implemented.]"
+  },
+  {
+    "title": "Purpose",
+    "body": "The purpose of this data security plan (\"Plan\") is to document the security measures and policies for handling data shared with the Principal Investigator (\"PI\") by the [NAME OF EXTERNAL PARTY]. If this agreement is executed, all members of the research team with access to the data are contractually obligated to follow all aspects of the plan. The goal of the protections outlined in the plan is to prevent persons who are not signatories, or otherwise authorized, from gaining access to the data.\n\nThis plan applies to both raw data received, any copies of the raw data and any derivatives and output of analysis thereof."
+  },
+  {
+    "title": "Stakeholders, Roles, and Responsibilities",
+    "body": "All stakeholders are responsible for reporting any suspected or confirmed incident or breach of data security to the Lab Director, UISL, and ISO immediately.\n\nPrincipal Investigator (PI): lead researcher for [RESEARCH PROJECT NAME].\nFull access to the data on the secured analysis computer.\nNo administrative access to the secured analysis computer.\nResponsible for holding backup of data in escrow.\nResponsible for supervising all research conducted using the data.\nShared responsibility with UISL for ensuring ongoing compliance with all elements of this plan.\nUnit Information Security Lead for [UNIT] (UISL): staff member appointed by the Dean of [UNIT] with responsibility for information security.\nFull access to data on the secured analysis computer.\nAdministrative access to the secured analysis computer.\nResponsible for supervising Unit IT personnel with administrative access to the secured analysis computer and data.\nShared responsibility with PI for ensuring ongoing compliance with all elements of this plan.\nUC Riverside Information Security Office (ISO): UC Riverside central information security office, under the direction of the Chief Information Security Officer (CISO).\nNo access to data.\nNo access to secured analysis computer.\nResponsible for reviewing this plan, including approval of any future changes prior to implementation.\nCISO is the responsible official for signing the data agreement with [EXTERNAL PARTY] [NOTE: THIS IS ONLY THE CASE IF THE AGENCY REQUIRES IT, OTHERWISE IT IS THE PI.]\n[EXTERNAL PARTY]: (EXAMPLE STATEMENT) agency providing the data for the sole purpose of the investigation described in the data agreement (Attachment 1: [EXTERNAL PARTY] Data Sharing Agreement)\nOriginator of data.\nNo access to secured analysis computer.\nService Provider or IT Director for [UNIT]: IT service provider responsible for provisioning, configuring, and managing the IT infrastructure used for processing the data, under the direction of the UISL."
+  },
+  {
+    "title": "Configuration of Secured Computing and Storage",
+    "body": "This section includes the following compliance matrices:\n- Access Control\n- Encryption\n- Physical and Environmental Security\n- Protection from Malware and Intrusion\n- Backup\n- Logging and Auditing\n- Control of Operational Software\n- Vulnerability & Patch Management\n- Communications Security"
+  },
+  {
+    "title": "Transfer of Data from [EXTERNAL PARTY] to UC Riverside",
+    "body": "[This is a sample data transfer method. Alter as necessary.]\nBefore being transmitted to UC Riverside, [EXTERNAL PARTY] will encrypt the data in ZIP format with AES-256 encryption.\nThe encryption passphrase shall be unique and be no less than 10 alphanumeric characters. It shall not include common words, phrases or any names.\nThe encrypted file will be stored in SharePoint and shared with the UISL. \nThe encryption key for the file will be transmitted to the UISL via telephone. \nOnce the encrypted file has been received by the UISL, it will be copied to an encrypted USB flash drive.\nThe UISL will transfer the encrypted file to the secured analysis computer, retaining the encrypted copy on the encrypted USB flash drive.\nThe UISL will decrypt the encrypted file on the secured analysis computer (which is itself encrypted).\nThe UISL will provide the encrypted USB flash drive to the PI as a backup of the original data, along with the drive (NOT the ZIP file) encryption key. The USB flash drive will be stored in a locked location (desk drawer in PI\u2019s office), and the encryption key for the USB drive will be kept in a locked location separate from the USB drive.  \nThe UISL will escrow the encryption key for the ZIP file in a secure password management system. Should the ZIP file need to be decrypted in the future (e.g., in the case of a failure of the secured analysis computer), the PI may contact the UISL to perform the decryption.\nThe PI will confirm the successful data decryption on the secured analysis computer, after which the UISL will destroy the SharePoint copy."
+  },
+  {
+    "title": "Operational Use of Secured Analysis Computer",
+    "body": "[This is an example list of operational procedures and must be modified for this project.]\nAn encrypted USB flash drive (separate from the flash drive used for the backup of the original data) will be provisioned for project use, and only that drive will be used to move data to or from the secured analysis computer.\nOnly the PI and approved researchers will have access to the encryption key for the encrypted USB flash drive.\nOnly aggregated, de-identified data will be copied from the secured analysis computer to the encrypted USB flash drive for use in other applications.\nOnly statistical analysis scripts intended for use in one of the approved applications (Approved Applications) will be copied from other computers to the encrypted USB flash drive. \nNo other data sets, applications, executables, documents, or other files than those noted above will be copied to or from the secured analysis computer.\nAny operational need to remove un-aggregated, identifiable data from the secured analysis computer must be approved in advance by the PI and UISL."
+  },
+  {
+    "title": "Cyclical Security Review",
+    "body": "[This section should contain details on how the secured computer or storage will be regularly monitored for intrusion and to ensure ongoing compliance with the plan. This is an example. Modify based on UC and external party requirements.]\nAt least once every three months, Service Provider personnel will perform maintenance on the secured analysis computer, consisting of the elements described in this section.\nDuring this maintenance window, the on-board network interface will be temporarily re-enabled, and the computer will be connected to the campus network via a NAT router/firewall, which will be used to prevent access to the computer from other network devices. \nThe maintenance will be tracked as an Incident record in the UC Riverside ITS ServiceNow instance, including a completed checklist of all required actions (see required actions below).\nAny deviations from the configuration specified in this plan or anomalies identified in the logs will be reported to the PI and UISL who will determine any required remediation and escalate any suspected security incident or breach to the ISO.\nAt the completion of the maintenance, the computer will be disconnected from the network, and the network interface will be disabled as described in Network Access.\nAll system, application and security logs collected since the previous maintenance window will be reviewed for anomalies and security issues.\nThe file system audit logs for the directories containing the data protected by this plan will be compared to verify that no accounts other than system accounts and accounts held by approved researchers have accessed the protected directories.\nEndpoint protection or antivirus logs will be reviewed to identify any malware threats or connection of unapproved peripherals."
+  },
+  {
+    "title": "Data Retention & Destruction",
+    "body": "UC Requirement: When handling Institutional Information classified at Protection Level 3 or higher, Workforce Members may need to employ stronger methods of disposal at a more granular level to ensure that data is truly irretrievable. (Disposal of Institutional Information)\n\n[This is an example. Modify based on UC and external party requirements.]\nAt the conclusion of the research period approved by [EXTERNAL PARTY], including any term extensions to the original agreement approved by [EXTERNAL PARTY], the data will be securely deleted from UC Riverside systems.\nThe storage on the secured analysis computer will be fully erased using a tool meeting the DOD 5220.22-M (seven random overwrite passes) standard.\nAny encrypted USB flash drives (backup of original data; analysis script and aggregated data transfer) will be fully erased using a tool meeting the DOD 5220.22-M (seven random overwrite passes) standard."
+  },
+  {
+    "title": "Security Plan Review",
+    "body": "This plan will be reviewed at least annually by the PI and UISL to verify continued compliance. Any risks identified will be added to the security plan following the process defined under Changes. \nDuring the review process, the PI will review the list of people with access to the data and ensure that access is revoked for any who no longer require access."
+  },
+  {
+    "title": "Violations of Data Security Plan",
+    "body": "Any violations of the data security plan shall be reported immediately to the PI, UISL, Unit IT Director and CISO."
+  },
+  {
+    "title": "Security Plan Changes",
+    "body": "Any changes to the IT environment or policies used for processing the data will be documented; approved by the PI and UISL; and submitted to the ISO for review and approval before implementation."
+  },
+  {
+    "title": "Agreement & Signatures",
+    "body": "The undersigned agree to abide by this security plan.\n\nAny researchers who will be granted access to the data covered by this plan in the future will be required to read ,agree and sign this plan or an addendum to this plan."
+  }
+]
