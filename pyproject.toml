@@ -1,6 +1,6 @@
 [project]
 name = "ursa-dsp"
-version = "0.2.1"
+version = "0.2.2"
 description = "Automated Data Security Plan Generator for UCR Research"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -40,3 +40,4 @@ target-version = "py39"
 
 [tool.mypy]
 strict = true
+plugins = ["pydantic.mypy"]

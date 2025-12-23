@@ -1,4 +1,5 @@
 import typer
+from typing import Optional
 import logging
 from rich.console import Console
 from rich.logging import RichHandler
@@ -21,13 +22,13 @@ def generate(
     project_identifier: str = typer.Argument(
         ..., help="Project name (folder in projects/) or path to Summary.md"
     ),
-    output_dir: str = typer.Option(
+    output_dir: Optional[str] = typer.Option(
         None, "--output", "-o", help="Custom output directory"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose debug logging"
     ),
-):
+) -> None:
     """
     Generate a Data Security Plan (DSP) for a given project.
     """
@@ -50,9 +51,9 @@ def generate(
 
 
 @app.command()
-def version():
+def version() -> None:
     """Show version info."""
-    print("Ursa DSP v0.2.1")
+    print("Ursa DSP v0.2.2")
 
 
 if __name__ == "__main__":

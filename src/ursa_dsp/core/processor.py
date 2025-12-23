@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ursa_dsp.core.rag import KnowledgeBase
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class DSPProcessor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.rag = KnowledgeBase()
         self.generator = DSPGenerator()
         self.renderer = ReportRenderer()
@@ -41,9 +41,15 @@ class DSPProcessor:
             raise FileNotFoundError(f"Template structure not found at {template_path}")
 
         with open(template_path, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            # Explicitly cast to the expected type to satisfy strict mypy
+            if isinstance(data, list):
+                return data
+            raise ValueError("Template structure must be a list of sections.")
 
-    def process_project(self, project_identifier: str, output_dir: str = None):
+    def process_project(
+        self, project_identifier: str, output_dir: Optional[str] = None
+    ) -> str:
         """Main execution flow."""
 
         # 1. Gather Info
@@ -61,7 +67,7 @@ class DSPProcessor:
 
         os.makedirs(output_dir, exist_ok=True)
 
-        generated_sections = []
+        generated_sections: List[Dict[str, Any]] = []
 
         # 2. Generate Content
         with Progress(

@@ -1,15 +1,17 @@
 import json
 import logging
-import google.generativeai as genai  # type: ignore
+from typing import Tuple, Any
+import google.generativeai as genai
 from ursa_dsp.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class DSPGenerator:
-    def __init__(self, model_name: str = "gemini-2.5-pro"):
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel(model_name)
+    def __init__(self, model_name: str = "gemini-2.5-pro") -> None:
+        # We ignore these calls because the library is untyped
+        genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
+        self.model: Any = genai.GenerativeModel(model_name)  # type: ignore[attr-defined]
 
     def generate_section(
         self,
@@ -17,7 +19,7 @@ class DSPGenerator:
         section_body: str,
         project_summary: str,
         examples_text: str,
-    ) -> tuple[str, str]:
+    ) -> Tuple[str, str]:
         """Generates content for a single section."""
 
         prompt = f"""

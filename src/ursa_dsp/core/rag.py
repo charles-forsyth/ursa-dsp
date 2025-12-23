@@ -8,12 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeBase:
-    def __init__(self, examples_dir: str = "example_dsps"):
+    def __init__(self, examples_dir: str = "example_dsps") -> None:
         self.examples_dir = examples_dir
         self.examples: List[str] = []
         self.load_examples()
 
-    def load_examples(self):
+    def load_examples(self) -> None:
         """Loads all valid examples from the directory."""
         if not os.path.exists(self.examples_dir):
             logger.warning(f"Examples directory not found: {self.examples_dir}")
@@ -52,8 +52,9 @@ class KnowledgeBase:
                 else:
                     # If no next section found, take a chunk or the rest
                     relevant_segments.append(
-                        example[start_index : start_index + 2000]
-                    )  # Cap at 2k chars if no end found
+                        example[
+                            start_index : start_index + 2000
+                        ]  # Cap at 2k chars if no end found
+                    )
 
-        return "\n--- EXAMPLE ---\
-".join(relevant_segments)
+        return "\n--- EXAMPLE ---\n".join(relevant_segments)

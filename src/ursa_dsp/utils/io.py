@@ -1,6 +1,6 @@
 import logging
-from docx import Document  # type: ignore
-from PyPDF2 import PdfReader  # type: ignore
+from docx import Document
+from PyPDF2 import PdfReader
 
 logger = logging.getLogger(__name__)
 
