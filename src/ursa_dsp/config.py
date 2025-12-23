@@ -18,4 +18,6 @@ class Settings(BaseSettings):
     )
 
 
+# Mypy cannot see that BaseSettings pulls from env, so it complains about missing args.
+# The pydantic.mypy plugin should fix this, but if it doesn't, we suppress it.
 settings = Settings()
