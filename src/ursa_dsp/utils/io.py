@@ -1,8 +1,9 @@
 import logging
-from docx import Document # type: ignore
-from PyPDF2 import PdfReader # type: ignore
+from docx import Document  # type: ignore
+from PyPDF2 import PdfReader  # type: ignore
 
 logger = logging.getLogger(__name__)
+
 
 def read_docx_text(path: str) -> str:
     """Reads and returns all text from a .docx file."""
@@ -22,6 +23,7 @@ def read_docx_text(path: str) -> str:
         logger.error(f"Error reading docx {path}: {e}")
         return ""
 
+
 def read_pdf_text(path: str) -> str:
     """Reads and returns all text from a .pdf file."""
     logger.debug(f"Reading PDF file: {path}")
@@ -35,6 +37,7 @@ def read_pdf_text(path: str) -> str:
         logger.error(f"Error reading pdf {path}: {e}")
         return ""
 
+
 def read_file_content(path: str) -> str:
     """Dispatches to the correct reader based on extension."""
     if path.endswith(".docx"):
@@ -42,7 +45,7 @@ def read_file_content(path: str) -> str:
     elif path.endswith(".pdf"):
         return read_pdf_text(path)
     elif path.endswith(".md") or path.endswith(".txt"):
-         with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return f.read()
     else:
         logger.warning(f"Unsupported file type: {path}")
