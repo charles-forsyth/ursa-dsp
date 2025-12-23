@@ -1,5 +1,9 @@
+import os
 import pytest
 from unittest.mock import MagicMock
+
+# Set environment variables BEFORE any ursa_dsp imports
+os.environ["GEMINI_API_KEY"] = "fake_key_for_testing"
 
 
 @pytest.fixture(autouse=True)
