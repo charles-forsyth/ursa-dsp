@@ -76,11 +76,14 @@ Below are full text examples of previously approved DSPs.
 --- END KNOWLEDGE BASE ---
 
 ### 4. Output Format
-Return **ONLY** a JSON object with a single key "section_content". The value must be the Markdown-formatted text of the section. Do not include the title in the markdown, just the body content.
+Return **ONLY** a JSON object with a single key "section_content". 
+- The value must be **STRICT MARKDOWN**.
+- **DO NOT** use HTML tags like <p>, <br>, <div>, or <table>. Use Markdown syntax for lists, bolding, and tables.
+- Do not include the section title in the content.
 
 Example JSON:
 {{
-  "section_content": "The research team will utilize..."
+  "section_content": "The research team will utilize **secure methods** to transfer data..."
 }}
 """
         try:
