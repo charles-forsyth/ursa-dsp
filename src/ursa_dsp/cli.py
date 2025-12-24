@@ -94,13 +94,13 @@ def run_wizard(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="""
-🐻 Ursa DSP Generator (v0.3.2)
+🐻 Ursa DSP Generator (v0.3.3)
 ==============================
 An AI-powered agent for creating high-assurance Data Security Plans (DSP).
 
 Examples:
   1. Generate from a summary file (AI Auto-Extraction):
-     $ ursa-dsp --summary ./projects/Nebula/Summary.md
+     $ ursa-dsp --summary ./projects/Nebula/Summary.md --auto
 
   2. Interactive Wizard (Guided):
      $ ursa-dsp --interactive
@@ -108,11 +108,8 @@ Examples:
   3. Hybrid (AI Extraction + Manual Verification):
      $ ursa-dsp --summary ./Summary.md --interactive
 
-  5. Piped Input (Unix Philosophy):
-     $ echo "We are analyzing CUI data..." | ursa-dsp --summary - --interactive
-
-  6. Raw String Summary:
-     $ ursa-dsp --summary "This project analyzes sensitive genomic data." --interactive
+  4. Full Automation (CI/CD style):
+     $ ursa-dsp --summary ./Summary.md --pi "Dr. Smith" --classification "CUI" --cui
 """,
         formatter_class=CustomFormatter,
     )
@@ -130,6 +127,12 @@ Examples:
         "--interactive",
         action="store_true",
         help="Launch the interactive wizard (uses AI defaults if summary provided).",
+    )
+    core_group.add_argument(
+        "-a",
+        "--auto",
+        action="store_true",
+        help="Fully automatic mode: extract metadata from summary and generate DSP without user prompts.",
     )
     core_group.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose debug logging."
@@ -176,18 +179,22 @@ Examples:
     args = parser.parse_args()
 
     if args.version:
-        print("Ursa DSP v0.3.2")
+        print("Ursa DSP v0.3.3")
         sys.exit(0)
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # Validation: Must have either summary or interactive
+    # Validation
     if not args.summary and not args.interactive:
         parser.error("You must provide --summary OR use --interactive mode.")
 
     processor = DSPProcessor()
     metadata = None
+
+    # Helper to merge defaults with extraction
+    def get_auto_val(extracted: Dict[str, Any], key: str, default: Any) -> Any:
+        return extracted.get(key, default)
 
     if args.interactive:
         defaults = None
@@ -208,8 +215,51 @@ Examples:
 
         metadata = run_wizard(summary_path=args.summary, defaults=defaults)
 
+    elif args.auto:
+        # Fully automatic mode
+        if not args.summary:
+            parser.error("--auto requires --summary to extract metadata from.")
+
+        console.print("[cyan]Auto-Extraction Mode: Analyzing summary...[/]")
+        try:
+            summary_text = processor.get_project_summary(
+                project_identifier=args.summary
+            )
+            extracted = processor.generator.extract_metadata(summary_text=summary_text)
+
+            # Construct metadata from extracted values, falling back to flags/defaults
+            metadata = ProjectMetadata(
+                project_name=get_auto_val(extracted, "project_name", args.project_name),
+                pi_name=get_auto_val(extracted, "pi_name", args.pi),
+                uisl_name=get_auto_val(extracted, "uisl_name", args.uisl),
+                department=get_auto_val(extracted, "department", args.department),
+                classification=get_auto_val(
+                    extracted, "classification", args.classification
+                ),
+                is_cui=get_auto_val(extracted, "is_cui", args.cui),
+                data_provider=get_auto_val(extracted, "data_provider", args.provider),
+                infrastructure=get_auto_val(
+                    extracted, "infrastructure", args.infrastructure
+                ),
+                os_type=get_auto_val(extracted, "os_type", "Linux"),
+                transfer_method=get_auto_val(
+                    extracted, "transfer_method", "Secure Transfer"
+                ),
+                retention_date=get_auto_val(extracted, "retention_date", "2030-01-01"),
+                destruction_method=get_auto_val(
+                    extracted, "destruction_method", "DoD Wipe"
+                ),
+            )
+            console.print(
+                f"[green]Metadata extracted successfully for: {metadata.project_name}[/]"
+            )
+
+        except Exception as e:
+            console.print(f"[bold red]Auto-extraction failed:[/] {e}")
+            sys.exit(1)
+
     else:
-        # Construct from flags
+        # Construct from flags only
         metadata = ProjectMetadata(
             project_name=args.project_name,
             pi_name=args.pi,
@@ -219,7 +269,6 @@ Examples:
             is_cui=args.cui,
             data_provider=args.provider,
             infrastructure=args.infrastructure,
-            # Defaults for fields not yet exposed as flags
             os_type="Linux",
             transfer_method="Secure Transfer",
             retention_date="2030-01-01",
@@ -235,7 +284,7 @@ Examples:
             project_identifier=identifier, metadata=metadata, output_dir=args.output
         )
         console.print(
-            f"\n[bold green]Success![/] DSP generated at: [underline]{pdf_path}[/]"
+            f"\n[bold green]Success![/] DSP generated at: [underline]{pdf_path}[/]`"
         )
     except Exception as e:
         console.print(f"\n[bold red]Error:[/] {e}")
