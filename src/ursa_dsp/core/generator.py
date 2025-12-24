@@ -4,16 +4,45 @@ from typing import Tuple, Any, Dict
 from google import genai
 from google.genai import types
 from ursa_dsp.config import settings
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class DSPGenerator:
-    def __init__(self, model_name: str = "gemini-2.0-flash-exp") -> None:
-        # Note: 'gemini-3-pro' is not yet public in the SDK types, falling back to a known modern model or user input
-        # However, we will respect the passed model_name
+    def __init__(self, model_name: str = "gemini-3-pro-preview") -> None:
+        """
+        Initializes the Gemini 3 Generator.
+        Strictly uses the specified model version.
+        """
         self.model_name = model_name
         self.client = genai.Client(api_key=settings.gemini_api_key)
+
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception_type(
+            Exception
+        ),  # Catching base Exception as SDK errors vary
+        before_sleep=lambda retry_state: logger.warning(
+            f"Rate limited or API error. Retrying... (Attempt {retry_state.attempt_number})"
+        ),
+    )
+    def _call_gemini(self, prompt: str) -> str:
+        """Internal helper to call Gemini with retry logic."""
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        if not response.text:
+            raise ValueError("Empty response from Gemini API")
+        return response.text
 
     def generate_section(
         self,
@@ -55,28 +84,20 @@ Example JSON:
 }}
 """
         try:
-            logger.info(f"Generating content for: {section_title}")
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                ),
+            logger.info(
+                f"Generating content for: {section_title} using {self.model_name}"
             )
+            response_text = self._call_gemini(prompt=prompt)
 
-            # Parse JSON response directly if supported, or text
-            if response.text:
-                parsed_json = json.loads(response.text)
-                content = parsed_json.get(
-                    "section_content", "[[ERROR: 'section_content' key not found]]"
-                )
-                return prompt, content
-            else:
-                return prompt, "[[ERROR: Empty response from API]]"
+            parsed_json = json.loads(response_text)
+            content = parsed_json.get(
+                "section_content", "[[ERROR: 'section_content' key not found]]"
+            )
+            return prompt, content
 
         except Exception as e:
             logger.error(f"Generation failed for {section_title}: {e}")
-            return prompt, f"[[ERROR: Generation failed: {e}]]"
+            return prompt, f"[[ERROR: Generation failed after retries: {e}]]"
 
     def extract_metadata(self, summary_text: str) -> Dict[str, Any]:
         """Uses Gemini to extract structured metadata from the project summary."""
@@ -87,7 +108,7 @@ You are an expert Research Compliance Officer. Your task is to analyze the follo
 {summary_text}
 
 **Instructions:**
-1. Extract the following fields. If a field is not explicitly stated, infer a reasonable guess based on the context (e.g., if "genomic data" is mentioned, classification might be P4/CUI).
+1. Extract the following fields. If a field is not explicitly stated, infer a reasonable guess based on the context.
 2. If you absolutely cannot infer a value, use a generic placeholder like "Unknown".
 3. Return **ONLY** a valid JSON object.
 
@@ -103,25 +124,15 @@ You are an expert Research Compliance Officer. Your task is to analyze the follo
     "infrastructure": "One of: Standalone Workstation, UCR Research Cluster, Cloud (AWS/GCP), Air-gapped Server",
     "os_type": "Operating System (e.g. Linux, Windows)",
     "transfer_method": "How data moves (e.g. Globus, USB)",
-    "retention_date": "YYYY-MM-DD (Estimate 5 years out if unknown)",
+    "retention_date": "YYYY-MM-DD",
     "destruction_method": "e.g. DoD 5220.22-M"
 }}
 """
         try:
-            logger.info("Extracting metadata from summary...")
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                ),
-            )
-
-            if response.text:
-                data: Dict[str, Any] = json.loads(response.text)
-                return data
-            return {}
-
+            logger.info(f"Extracting metadata using {self.model_name}...")
+            response_text = self._call_gemini(prompt=prompt)
+            data: Dict[str, Any] = json.loads(response_text)
+            return data
         except Exception as e:
             logger.error(f"Metadata extraction failed: {e}")
             return {}
