@@ -22,18 +22,20 @@ def test_knowledge_base_loading(tmp_path):
     assert "Test Section" in kb.examples[0]
 
 
-def test_rag_extraction(tmp_path):
+def test_rag_full_context(tmp_path):
     examples_dir = tmp_path / "examples"
     examples_dir.mkdir()
     content = "Start\nSection 1\nRelevant content here.\n\nSection 2\nOther content."
     (examples_dir / "ex1.txt").write_text(content, encoding="utf-8")
 
     kb = KnowledgeBase(examples_dir=str(examples_dir))
-    relevant = kb.get_relevant_examples("Section 1")
-    assert "Relevant content here" in relevant
+    full_context = kb.get_full_context()
+    assert "Relevant content here" in full_context
+    assert "--- START EXAMPLE DSP:" in full_context
 
 
 def test_generator_mock(mock_genai):
     gen = DSPGenerator()
-    _, content = gen.generate_section("Title", "Body", "Summary", "Examples")
+    # Updated signature: section_title, section_body, project_summary, full_context
+    _, content = gen.generate_section("Title", "Body", "Summary", "Full Context")
     assert content == "Mocked Content"

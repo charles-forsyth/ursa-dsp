@@ -1,8 +1,9 @@
 import os
 import json
 import logging
+import concurrent.futures
 from typing import List, Dict, Any, Optional
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskID
 
 from ursa_dsp.core.rag import KnowledgeBase
 from ursa_dsp.core.generator import DSPGenerator
@@ -19,16 +20,10 @@ class DSPProcessor:
         self.renderer = ReportRenderer()
 
     def get_project_summary(self, project_identifier: str) -> str:
-        """
-        Resolves project summary.
-        Accepts either a project name (looking in projects/NAME/Summary.md)
-        or a direct path to a file.
-        """
-        # Check if it's a direct file path
+        """Resolves project summary."""
         if os.path.exists(project_identifier) and os.path.isfile(project_identifier):
             return read_file_content(project_identifier)
 
-        # Check standard convention
         summary_path = os.path.join("projects", project_identifier, "Summary.md")
         if os.path.exists(summary_path):
             return read_file_content(summary_path)
@@ -42,19 +37,39 @@ class DSPProcessor:
 
         with open(template_path, "r") as f:
             data = json.load(f)
-            # Explicitly cast to the expected type to satisfy strict mypy
             if isinstance(data, list):
                 return data
             raise ValueError("Template structure must be a list of sections.")
 
+    def process_section(
+        self,
+        section: Dict[str, Any],
+        summary: str,
+        full_context: str,
+        progress: Progress,
+        task_id: TaskID,
+    ) -> Dict[str, Any]:
+        """Worker function for parallel processing."""
+        title = section["title"]
+        body = section["body"]
+
+        # Determine the order index from the section if available, otherwise 0 (handled later)
+        # Actually, we will just return the result and sort by original index later.
+
+        _, content = self.generator.generate_section(title, body, summary, full_context)
+
+        progress.advance(task_id)
+        return {"title": title, "content": content}
+
     def process_project(
         self, project_identifier: str, output_dir: Optional[str] = None
     ) -> str:
-        """Main execution flow."""
+        """Main execution flow with parallel generation."""
 
         # 1. Gather Info
         summary = self.get_project_summary(project_identifier)
         template = self.load_template_structure()
+        full_context = self.rag.get_full_context()
 
         project_name = (
             os.path.basename(project_identifier).replace(".md", "")
@@ -67,49 +82,73 @@ class DSPProcessor:
 
         os.makedirs(output_dir, exist_ok=True)
 
-        generated_sections: List[Dict[str, Any]] = []
+        generated_sections: List[Dict[str, Any]] = [
+            {} for _ in template
+        ]  # Pre-allocate to maintain order?
+        # Better strategy: Generate (index, result) tuples and sort.
 
-        # 2. Generate Content
+        # 2. Parallel Generation
+        logger.info(f"Starting parallel generation for {len(template)} sections...")
+
         with Progress(
             SpinnerColumn(),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
             TextColumn("[progress.description]{task.description}"),
             transient=True,
         ) as progress:
-            task = progress.add_task(
-                description="Generating DSP...", total=len(template)
+            main_task = progress.add_task(
+                f"[cyan]Generating {len(template)} sections...", total=len(template)
             )
 
-            for section in template:
-                title = section["title"]
-                body = section["body"]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                # Map futures to their index to preserve order
+                future_to_index = {
+                    executor.submit(
+                        self.process_section,
+                        section,
+                        summary,
+                        full_context,
+                        progress,
+                        main_task,
+                    ): i
+                    for i, section in enumerate(template)
+                }
 
-                progress.update(task, description=f"Generating: {title}")
+                results = []
+                for future in concurrent.futures.as_completed(future_to_index):
+                    index = future_to_index[future]
+                    try:
+                        data = future.result()
+                        results.append((index, data))
+                    except Exception as exc:
+                        logger.error(
+                            f"Section generation generated an exception: {exc}"
+                        )
+                        results.append(
+                            (
+                                index,
+                                {
+                                    "title": template[index]["title"],
+                                    "content": "[[GENERATION ERROR]]",
+                                },
+                            )
+                        )
 
-                # RAG: Get examples
-                examples = self.rag.get_relevant_examples(title)
-
-                # AI: Generate
-                _, content = self.generator.generate_section(
-                    title, body, summary, examples
-                )
-
-                generated_sections.append({"title": title, "content": content})
-
-                progress.advance(task)
+        # Sort results by original index to ensure document flow matches template
+        results.sort(key=lambda x: x[0])
+        generated_sections = [data for _, data in results]
 
         # 3. Save Output
-        # Save JSON Log
         log_path = os.path.join(output_dir, f"{project_name}_dsp_log.json")
         with open(log_path, "w") as f:
             json.dump(generated_sections, f, indent=2)
 
-        # Render HTML
         html_content = self.renderer.render_html(project_name, generated_sections)
         html_path = os.path.join(output_dir, f"{project_name}_dsp.html")
         with open(html_path, "w") as f:
             f.write(html_content)
 
-        # Generate PDF
         pdf_path = os.path.join(output_dir, f"{project_name}_dsp.pdf")
         self.renderer.generate_pdf(html_content, pdf_path)
 
