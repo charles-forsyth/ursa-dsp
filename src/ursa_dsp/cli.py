@@ -19,8 +19,11 @@ console = Console()
 
 @app.command()
 def generate(
-    project_identifier: str = typer.Argument(
-        ..., help="Project name (folder in projects/) or path to Summary.md"
+    summary: str = typer.Option(
+        ...,
+        "--summary",
+        "-s",
+        help="Project name (folder in projects/) or path to Summary.md",
     ),
     output_dir: Optional[str] = typer.Option(
         None, "--output", "-o", help="Custom output directory"
@@ -38,8 +41,8 @@ def generate(
     processor = DSPProcessor()
 
     try:
-        console.rule(f"[bold blue]Processing: {project_identifier}[/]")
-        pdf_path = processor.process_project(project_identifier, output_dir)
+        console.rule(f"[bold blue]Processing: {summary}[/]")
+        pdf_path = processor.process_project(summary, output_dir)
         console.print(
             f"\n[bold green]Success![/] DSP generated at: [underline]{pdf_path}[/]"
         )
@@ -53,7 +56,7 @@ def generate(
 @app.command()
 def version() -> None:
     """Show version info."""
-    print("Ursa DSP v0.2.3")
+    print("Ursa DSP v0.2.4")
 
 
 if __name__ == "__main__":
