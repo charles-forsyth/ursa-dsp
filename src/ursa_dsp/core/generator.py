@@ -91,8 +91,12 @@ Below are full text examples of previously approved DSPs.
 --- END KNOWLEDGE BASE ---
 
 ### 4. Output Format
-Return **ONLY** valid JSON matching the schema. The content must be **STRICT MARKDOWN**.
-**DO NOT** use HTML tags like <p>, <br>, <div>, or <table>. Use Markdown syntax for lists, bolding, and tables.
+You must output a JSON object adhering to the schema.
+**CRITICAL INSTRUCTIONS FOR CONTENT:**
+- The `section_content` must be **comprehensive and detailed**. Do not summarize.
+- Use **multi-paragraph prose** and bullet points where appropriate, just like the examples.
+- Use **STRICT MARKDOWN**. Do not use HTML tags.
+- Do not include the section title in the content.
 """
         try:
             logger.info(

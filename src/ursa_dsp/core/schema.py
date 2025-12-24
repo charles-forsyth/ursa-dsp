@@ -70,5 +70,5 @@ class ProjectMetadata(BaseModel):
 class DSPSectionResponse(BaseModel):
     section_content: str = Field(
         ...,
-        description="The generated markdown content for the DSP section. Do not include the title.",
+        description="The fully generated, comprehensive content for this DSP section. It must be written in professional, multi-paragraph Markdown. It should strictly follow the style and depth of the provided examples. Do not include the section title.",
     )
