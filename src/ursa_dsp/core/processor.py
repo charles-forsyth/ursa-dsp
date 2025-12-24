@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 import concurrent.futures
@@ -21,19 +22,25 @@ class DSPProcessor:
         self.renderer = ReportRenderer()
 
     def get_project_summary(self, project_identifier: str) -> str:
-        """Resolves project summary. Returns empty string if identifier doesn't point to a file."""
+        """
+        Resolves project summary.
+        1. If identifier is '-', read from stdin.
+        2. If identifier is a file path, read the file.
+        3. Otherwise, treat the identifier as the raw summary text.
+        """
+        if project_identifier == "-":
+            return sys.stdin.read()
+
         if os.path.exists(project_identifier) and os.path.isfile(project_identifier):
             return read_file_content(path=project_identifier)
 
+        # Legacy check: look in projects/NAME/Summary.md
         summary_path = os.path.join("projects", project_identifier, "Summary.md")
         if os.path.exists(summary_path):
             return read_file_content(path=summary_path)
 
-        # If it's not a file/standard path, we assume the summary is missing and will rely on metadata
-        logger.debug(
-            f"Summary file not found for {project_identifier}. Proceeding with identifier name."
-        )
-        return ""
+        # Treat as raw string description
+        return project_identifier
 
     def load_template_structure(self) -> List[Dict[str, Any]]:
         template_path = os.path.join("templates", "dsp_template_structure.json")
@@ -87,15 +94,17 @@ class DSPProcessor:
                 + (summary if summary else "No additional summary provided.")
             )
 
-        template = self.load_template_structure()
+        template: List[Dict[str, Any]] = self.load_template_structure()
         full_context = self.rag.get_full_context()
 
         # Resolve project name for output files
-        project_name = (
-            os.path.basename(project_identifier).replace(".md", "")
-            if os.path.isfile(project_identifier)
-            else project_identifier
-        )
+        # If identifier is a raw string/path, handle nicely
+        if os.path.isfile(project_identifier):
+            project_name = os.path.basename(project_identifier).replace(".md", "")
+        elif metadata and metadata.project_name:
+            project_name = metadata.project_name.replace(" ", "_")
+        else:
+            project_name = "Generated_DSP"
 
         if not output_dir:
             output_dir = os.path.join("projects", project_name)

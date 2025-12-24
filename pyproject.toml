@@ -1,6 +1,6 @@
 [project]
 name = "ursa-dsp"
-version = "0.2.11"
+version = "0.2.12"
 description = "Automated Data Security Plan Generator for Research Compliance"
 readme = "README.md"
 requires-python = ">=3.9"

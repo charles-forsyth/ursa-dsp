@@ -108,8 +108,11 @@ Examples:
   3. Hybrid (AI Extraction + Manual Verification):
      $ ursa-dsp --summary ./Summary.md --interactive
 
-  4. Full Automation (CI/CD style):
-     $ ursa-dsp --summary ./Summary.md --pi "Dr. Smith" --classification "CUI" --cui
+  5. Piped Input (Unix Philosophy):
+     $ echo "We are analyzing CUI data..." | ursa-dsp --summary - --interactive
+
+  6. Raw String Summary:
+     $ ursa-dsp --summary "This project analyzes sensitive genomic data." --interactive
 """,
         formatter_class=CustomFormatter,
     )
@@ -117,7 +120,7 @@ Examples:
     # Core Arguments
     core_group = parser.add_argument_group("Core Options")
     core_group.add_argument(
-        "-s", "--summary", help="Path to project summary file (Markdown/Text)."
+        "-s", "--summary", help="Path to file, raw text string, or '-' for stdin."
     )
     core_group.add_argument(
         "-o", "--output", help="Directory to save the generated artifacts."
@@ -173,7 +176,7 @@ Examples:
     args = parser.parse_args()
 
     if args.version:
-        print("Ursa DSP v0.2.11")
+        print("Ursa DSP v0.2.12")
         sys.exit(0)
 
     if args.verbose:
