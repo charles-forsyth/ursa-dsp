@@ -72,7 +72,7 @@ GEMINI_API_KEY=AIzaSy...
 Feed the agent your project's summary. The summary should describe the data flow, research goals, and personnel.
 
 ```bash
-ursa-dsp generate ./projects/Project_Nebula/Summary.md --output ./artifacts/
+ursa-dsp generate --summary ./projects/Project_Nebula/Summary.md --output ./artifacts/
 ```
 
 **The Agent Workflow:**

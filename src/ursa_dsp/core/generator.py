@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class DSPGenerator:
-    def __init__(self, model_name: str = "gemini-2.5-pro") -> None:
+    def __init__(self, model_name: str = "gemini-3-pro") -> None:
         # We ignore these calls because the library is untyped
         genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
         self.model: Any = genai.GenerativeModel(model_name)  # type: ignore[attr-defined]
