@@ -1,6 +1,7 @@
-import typer
-from typing import Optional, Dict, Any
+import argparse
+import sys
 import logging
+from typing import Optional, Dict, Any
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.prompt import Prompt, Confirm
@@ -15,8 +16,13 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)],
 )
 
-app = typer.Typer(help="Ursa DSP Generator - Automated Data Security Plans")
 console = Console()
+
+
+class CustomFormatter(argparse.RawDescriptionHelpFormatter):
+    """Custom formatter to show detailed examples."""
+
+    pass
 
 
 def run_wizard(
@@ -32,129 +38,162 @@ def run_wizard(
     if defaults:
         console.print("[dim]Defaults pre-filled from AI analysis of summary.[/]\n")
 
+    # Helper for defaults
+    def get_def(key: str, fallback: Any) -> Any:
+        return defaults.get(key, fallback) if defaults else fallback
+
     return ProjectMetadata(
         project_name=Prompt.ask(
-            "Project Name",
-            default=defaults.get("project_name", "My Research Project")
-            if defaults
-            else "My Research Project",
+            "Project Name", default=get_def("project_name", "My Research Project")
         ),
         pi_name=Prompt.ask(
-            "Principal Investigator (PI)",
-            default=defaults.get("pi_name", "Unknown PI") if defaults else "Unknown PI",
+            "Principal Investigator (PI)", default=get_def("pi_name", "Unknown PI")
         ),
         uisl_name=Prompt.ask(
             "Unit Information Security Lead (UISL)",
-            default=defaults.get("uisl_name", "Unknown UISL")
-            if defaults
-            else "Unknown UISL",
+            default=get_def("uisl_name", "Unknown UISL"),
         ),
         department=Prompt.ask(
-            "Department/Unit",
-            default=defaults.get("department", "Research Computing")
-            if defaults
-            else "Research Computing",
+            "Department/Unit", default=get_def("department", "Research Computing")
         ),
         classification=Prompt.ask(
             "Data Classification",
             choices=[e.value for e in DataClassification],
-            default=defaults.get("classification", DataClassification.P4.value)
-            if defaults
-            else DataClassification.P4.value,
+            default=get_def("classification", DataClassification.P4.value),
         ),
         is_cui=Confirm.ask(
-            "Does this project involve CUI?",
-            default=defaults.get("is_cui", False) if defaults else False,
+            "Does this project involve CUI?", default=get_def("is_cui", False)
         ),
         data_provider=Prompt.ask(
             "Data Provider (e.g., NIH, Army)",
-            default=defaults.get("data_provider", "External Agency")
-            if defaults
-            else "External Agency",
+            default=get_def("data_provider", "External Agency"),
         ),
         infrastructure=Prompt.ask(
             "Infrastructure Type",
             choices=[e.value for e in InfrastructureType],
-            default=defaults.get("infrastructure", InfrastructureType.WORKSTATION.value)
-            if defaults
-            else InfrastructureType.WORKSTATION.value,
+            default=get_def("infrastructure", InfrastructureType.WORKSTATION.value),
         ),
         os_type=Prompt.ask(
-            "Operating System",
-            default=defaults.get("os_type", "Ubuntu Linux 22.04")
-            if defaults
-            else "Ubuntu Linux 22.04",
+            "Operating System", default=get_def("os_type", "Ubuntu Linux 22.04")
         ),
         transfer_method=Prompt.ask(
             "Transfer Method",
-            default=defaults.get("transfer_method", "Encrypted USB / Globus")
-            if defaults
-            else "Encrypted USB / Globus",
+            default=get_def("transfer_method", "Encrypted USB / Globus"),
         ),
         retention_date=Prompt.ask(
             "Project End Date (YYYY-MM-DD)",
-            default=defaults.get("retention_date", "2030-01-01")
-            if defaults
-            else "2030-01-01",
+            default=get_def("retention_date", "2030-01-01"),
         ),
         destruction_method=Prompt.ask(
             "Destruction Method",
-            default=defaults.get("destruction_method", "DoD 5220.22-M 3-pass wipe")
-            if defaults
-            else "DoD 5220.22-M 3-pass wipe",
+            default=get_def("destruction_method", "DoD 5220.22-M 3-pass wipe"),
         ),
     )
 
 
-@app.command()
-def generate(
-    summary: Optional[str] = typer.Option(
-        None,
-        "--summary",
-        "-s",
-        help="Path to Summary.md (Optional if using --interactive)",
-    ),
-    output_dir: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Directory to save the results"
-    ),
-    interactive: bool = typer.Option(
-        False,
-        "--interactive",
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="""
+🐻 Ursa DSP Generator (v0.2.9)
+==============================
+An AI-powered agent for creating high-assurance Data Security Plans (DSP).
+
+Examples:
+  1. Generate from a summary file (AI Auto-Extraction):
+     $ ursa-dsp --summary ./projects/Nebula/Summary.md
+
+  2. Interactive Wizard (Guided):
+     $ ursa-dsp --interactive
+
+  3. Hybrid (AI Extraction + Manual Verification):
+     $ ursa-dsp --summary ./Summary.md --interactive
+
+  4. Full Automation (CI/CD style):
+     $ ursa-dsp --summary ./Summary.md --pi "Dr. Smith" --classification "CUI" --cui
+""",
+        formatter_class=CustomFormatter,
+    )
+
+    # Core Arguments
+    core_group = parser.add_argument_group("Core Options")
+    core_group.add_argument(
+        "-s", "--summary", help="Path to project summary file (Markdown/Text)."
+    )
+    core_group.add_argument(
+        "-o", "--output", help="Directory to save the generated artifacts."
+    )
+    core_group.add_argument(
         "-i",
-        help="Run interactive wizard (with AI pre-fill if --summary is provided)",
-    ),
-    # CLI Flags for Power Users
-    project_name: str = typer.Option("My Research Project", help="Project Name"),
-    pi: str = typer.Option("Unknown PI", help="Principal Investigator Name"),
-    uisl: str = typer.Option("Unknown UISL", help="UISL Name"),
-    department: str = typer.Option("Research Computing", help="Department"),
-    classification: DataClassification = typer.Option(
-        DataClassification.P4, help="Data Classification"
-    ),
-    cui: bool = typer.Option(False, help="Is CUI?"),
-    provider: str = typer.Option("External Agency", help="Data Provider"),
-    infrastructure: InfrastructureType = typer.Option(
-        InfrastructureType.WORKSTATION, help="Infrastructure Type"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose debug logging"
-    ),
-) -> None:
-    """
-    Generate a Data Security Plan (DSP).
-    """
-    if verbose:
+        "--interactive",
+        action="store_true",
+        help="Launch the interactive wizard (uses AI defaults if summary provided).",
+    )
+    core_group.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose debug logging."
+    )
+    core_group.add_argument(
+        "--version", action="store_true", help="Show version info and exit."
+    )
+
+    # Metadata Overrides
+    meta_group = parser.add_argument_group("Metadata Overrides (for automation)")
+    meta_group.add_argument(
+        "--project-name", default="My Research Project", help="Official project title"
+    )
+    meta_group.add_argument(
+        "--pi", default="Unknown PI", help="Principal Investigator Name"
+    )
+    meta_group.add_argument(
+        "--uisl", default="Unknown UISL", help="Unit Information Security Lead"
+    )
+    meta_group.add_argument(
+        "--department", default="Research Computing", help="Research Unit/Dept"
+    )
+    meta_group.add_argument(
+        "--classification",
+        type=DataClassification,
+        choices=list(DataClassification),
+        default=DataClassification.P4,
+        help="Data Sensitivity Level",
+    )
+    meta_group.add_argument(
+        "--cui", action="store_true", help="Flag if project involves CUI"
+    )
+    meta_group.add_argument(
+        "--provider", default="External Agency", help="Data Provider Name"
+    )
+    meta_group.add_argument(
+        "--infrastructure",
+        type=InfrastructureType,
+        choices=list(InfrastructureType),
+        default=InfrastructureType.WORKSTATION,
+        help="Primary Storage Infrastructure",
+    )
+
+    args = parser.parse_args()
+
+    if args.version:
+        print("Ursa DSP v0.2.9")
+        sys.exit(0)
+
+    if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    # Validation: Must have either summary or interactive
+    if not args.summary and not args.interactive:
+        parser.error("You must provide --summary OR use --interactive mode.")
 
     processor = DSPProcessor()
     metadata = None
 
-    if interactive:
+    if args.interactive:
         defaults = None
-        if summary:
+        if args.summary:
             console.print("[cyan]Reading summary for AI pre-fill...[/]")
             try:
-                summary_text = processor.get_project_summary(project_identifier=summary)
+                summary_text = processor.get_project_summary(
+                    project_identifier=args.summary
+                )
                 console.print("[cyan]Analyzing project with Gemini 3 Pro...[/]")
                 defaults = processor.generator.extract_metadata(
                     summary_text=summary_text
@@ -164,19 +203,20 @@ def generate(
                     f"[yellow]Warning: AI analysis failed ({e}). Continuing with manual wizard.[/]"
                 )
 
-        metadata = run_wizard(summary_path=summary, defaults=defaults)
+        metadata = run_wizard(summary_path=args.summary, defaults=defaults)
 
     else:
         # Construct from flags
         metadata = ProjectMetadata(
-            project_name=project_name,
-            pi_name=pi,
-            uisl_name=uisl,
-            department=department,
-            classification=classification,
-            is_cui=cui,
-            data_provider=provider,
-            infrastructure=infrastructure,
+            project_name=args.project_name,
+            pi_name=args.pi,
+            uisl_name=args.uisl,
+            department=args.department,
+            classification=args.classification,
+            is_cui=args.cui,
+            data_provider=args.provider,
+            infrastructure=args.infrastructure,
+            # Defaults for fields not yet exposed as flags
             os_type="Linux",
             transfer_method="Secure Transfer",
             retention_date="2030-01-01",
@@ -184,30 +224,22 @@ def generate(
         )
 
     try:
-        # If summary is None, we pass None and the processor handles it (using metadata only)
-        display_name = summary if summary else metadata.project_name
-        console.rule(f"[bold blue]Processing: {display_name}[/]")
+        # If summary is missing, use metadata project name as identifier
+        identifier = args.summary if args.summary else metadata.project_name
+        console.rule(f"[bold blue]Processing: {identifier}[/]")
 
         pdf_path = processor.process_project(
-            project_identifier=summary if summary else metadata.project_name,
-            metadata=metadata,
-            output_dir=output_dir,
+            project_identifier=identifier, metadata=metadata, output_dir=args.output
         )
         console.print(
             f"\n[bold green]Success![/] DSP generated at: [underline]{pdf_path}[/]"
         )
     except Exception as e:
         console.print(f"\n[bold red]Error:[/] {e}")
-        if verbose:
+        if args.verbose:
             console.print_exception()
-        raise typer.Exit(code=1)
-
-
-@app.command()
-def version() -> None:
-    """Show version info."""
-    print("Ursa DSP v0.2.8")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    app()
+    main()
