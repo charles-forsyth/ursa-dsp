@@ -26,7 +26,7 @@ class ProjectMetadata(BaseModel):
     classification: DataClassification = Field(
         DataClassification.P4, description="Highest data classification level"
     )
-    is_cui: bool = Field(False, description="Does this involve CUI?")
+    is_cui: bool = Field(False, description="Does this project involve CUI?")
     data_provider: str = Field(..., description="External data provider (e.g., NIH)")
 
     infrastructure: InfrastructureType = Field(
@@ -35,7 +35,9 @@ class ProjectMetadata(BaseModel):
     transfer_method: str = Field("Encrypted Drive", description="Data transfer method")
     os_type: str = Field("Linux", description="Operating System")
 
-    retention_date: str = Field(..., description="Project end/retention date")
+    retention_date: str = Field(
+        ..., description="Project end/retention date (YYYY-MM-DD)"
+    )
     destruction_method: str = Field(
         "DoD 5220.22-M", description="Data destruction standard"
     )
@@ -63,3 +65,10 @@ class ProjectMetadata(BaseModel):
         Retention Date: {self.retention_date}
         Destruction: {self.destruction_method}
         """
+
+
+class DSPSectionResponse(BaseModel):
+    section_content: str = Field(
+        ...,
+        description="The generated markdown content for the DSP section. Do not include the title.",
+    )

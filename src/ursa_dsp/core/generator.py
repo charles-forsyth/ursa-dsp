@@ -5,6 +5,7 @@ from typing import Tuple, Any, Dict
 from google import genai
 from google.genai import types
 from ursa_dsp.config import settings
+from ursa_dsp.core.schema import ProjectMetadata, DSPSectionResponse
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -32,16 +33,20 @@ class DSPGenerator:
             f"Rate limited or API error. Retrying... (Attempt {retry_state.attempt_number})"
         ),
     )
-    def _call_gemini(self, prompt: str) -> str:
-        """Internal helper to call Gemini with retry logic."""
+    def _call_gemini(self, prompt: str, schema: Any) -> Any:
+        """Internal helper to call Gemini with retry logic and strict schema enforcement."""
         response = self.client.models.generate_content(
             model=self.model_name,
             contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json", response_schema=schema
+            ),
         )
         if not response.text:
             raise ValueError("Empty response from Gemini API")
-        return response.text
+
+        # With response_schema, the text is guaranteed to be valid JSON matching the schema
+        return json.loads(response.text)
 
     def _sanitize_content(self, text: str) -> str:
         """Removes AI artifacts like markdown code blocks and raw HTML tags."""
@@ -50,7 +55,6 @@ class DSPGenerator:
         text = text.replace("```", "")
 
         # 2. Remove raw HTML tags that might have been included
-        # This regex matches things like <p>, <table>, </div> etc.
         text = re.sub(r"<[^>]+>", "", text)
 
         return text.strip()
@@ -62,7 +66,7 @@ class DSPGenerator:
         project_summary: str,
         full_context: str,
     ) -> Tuple[str, str]:
-        """Generates content for a single section using full-context RAG."""
+        """Generates content for a single section using full-context RAG and strict schema."""
 
         prompt = f"""
 You are an expert Research Compliance Officer at a top-tier university. Your goal is to write a specific section of a Data Security Plan (DSP) for a new research project.
@@ -87,26 +91,18 @@ Below are full text examples of previously approved DSPs.
 --- END KNOWLEDGE BASE ---
 
 ### 4. Output Format
-Return **ONLY** a JSON object with a single key "section_content". 
-- The value must be **STRICT MARKDOWN**.
-- **DO NOT** use HTML tags like <p>, <br>, <div>, or <table>. Use Markdown syntax for lists, bolding, and tables.
-- Do not include the section title in the content.
-
-Example JSON:
-{{
-  "section_content": "The research team will utilize **secure methods** to transfer data..."
-}}
+Return **ONLY** valid JSON matching the schema. The content must be **STRICT MARKDOWN**.
+**DO NOT** use HTML tags like <p>, <br>, <div>, or <table>. Use Markdown syntax for lists, bolding, and tables.
 """
         try:
             logger.info(
                 f"Generating content for: {section_title} using {self.model_name}"
             )
-            response_text = self._call_gemini(prompt=prompt)
 
-            parsed_json = json.loads(response_text)
-            raw_content = parsed_json.get("section_content", "")
+            # Enforce DSPSectionResponse schema
+            data = self._call_gemini(prompt=prompt, schema=DSPSectionResponse)
 
-            # Clean up the content before returning
+            raw_content = data.get("section_content", "")
             clean_content = self._sanitize_content(text=raw_content)
 
             return prompt, clean_content
@@ -116,7 +112,7 @@ Example JSON:
             return prompt, f"[[ERROR: Generation failed after retries: {e}]]"
 
     def extract_metadata(self, summary_text: str) -> Dict[str, Any]:
-        """Uses Gemini to extract structured metadata from the project summary."""
+        """Uses Gemini to extract structured metadata from the project summary using strict schema."""
         prompt = f"""
 You are an expert Research Compliance Officer. Your task is to analyze the following research project summary and extract specific metadata fields to populate a Data Security Plan.
 
@@ -126,29 +122,15 @@ You are an expert Research Compliance Officer. Your task is to analyze the follo
 **Instructions:**
 1. Extract the following fields. If a field is not explicitly stated, infer a reasonable guess based on the context.
 2. If you absolutely cannot infer a value, use a generic placeholder like "Unknown".
-3. Return **ONLY** a valid JSON object.
-
-**Schema to Fill:**
-{{
-    "project_name": "Official title or short name",
-    "pi_name": "Name of Principal Investigator",
-    "uisl_name": "Name of IT Security Lead",
-    "department": "Department or Unit",
-    "classification": "One of: P3 (Moderate), P4 (High), HIPAA, CUI, Export Controlled",
-    "is_cui": true/false,
-    "data_provider": "Who is providing the data? (e.g. NIH)",
-    "infrastructure": "One of: Standalone Workstation, UCR Research Cluster, Cloud (AWS/GCP), Air-gapped Server",
-    "os_type": "Operating System (e.g. Linux, Windows)",
-    "transfer_method": "How data moves (e.g. Globus, USB)",
-    "retention_date": "YYYY-MM-DD",
-    "destruction_method": "e.g. DoD 5220.22-M"
-}}
 """
         try:
             logger.info(f"Extracting metadata using {self.model_name}...")
-            response_text = self._call_gemini(prompt=prompt)
-            data: Dict[str, Any] = json.loads(response_text)
-            return data
+
+            # Enforce ProjectMetadata schema
+            # Note: We pass the Pydantic model directly to helper which passes it to SDK
+            data = self._call_gemini(prompt=prompt, schema=ProjectMetadata)
+            return data  # type: ignore
+
         except Exception as e:
             logger.error(f"Metadata extraction failed: {e}")
             return {}
