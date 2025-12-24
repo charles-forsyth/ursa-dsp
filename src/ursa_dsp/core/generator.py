@@ -18,26 +18,39 @@ class DSPGenerator:
         section_title: str,
         section_body: str,
         project_summary: str,
-        examples_text: str,
+        full_context: str,
     ) -> Tuple[str, str]:
-        """Generates content for a single section."""
+        """Generates content for a single section using full-context RAG."""
 
         prompt = f"""
-You are an expert in writing Data Security Plans for university research. Your task is to complete the following section of a DSP, replacing all placeholders like [PLACEHOLDER] with specific, relevant information.
+You are an expert Research Compliance Officer at a top-tier university. Your goal is to write a specific section of a Data Security Plan (DSP) for a new research project.
 
-**Template Section to Complete:**
-Title: {section_title}
-Body: {section_body}
+### 1. The Task
+Write the content for the DSP section titled: **"{section_title}"**.
+Context/Instructions for this section: "{section_body}"
 
-**Project-Specific Information (from its Summary.md):**
+### 2. The New Project (Summary)
 {project_summary}
 
-**Examples of similar, completed sections from other DSPs:**
-{examples_text}
+### 3. The Knowledge Base (Reference Examples)
+Below are full text examples of previously approved DSPs. 
+**INSTRUCTIONS:** 
+1. SEARCH these examples for how they handle the "{section_title}" section.
+2. ADAPT the best language and security controls to fit the specific needs of the "New Project" above.
+3. IGNORE irrelevant details from the examples (e.g., specific names, old dates).
+4. ENSURE the tone is formal, professional, and compliant (NIST 800-171/CMMC standards).
 
-**Instructions:**
-Based on all the information above, write a new, complete version of the section. It must be comprehensive, professional, and directly relevant to the project's details. **Do not use any placeholder text.** 
-Return your response as a single JSON object with one key: "section_content". The value should be the fully completed text for the new section, formatted in Markdown.
+--- START KNOWLEDGE BASE ---
+{full_context}
+--- END KNOWLEDGE BASE ---
+
+### 4. Output Format
+Return **ONLY** a JSON object with a single key "section_content". The value must be the Markdown-formatted text of the section. Do not include the title in the markdown, just the body content.
+
+Example JSON:
+{{
+  "section_content": "The research team will utilize..."
+}}
 """
         try:
             logger.info(f"Generating content for: {section_title}")
