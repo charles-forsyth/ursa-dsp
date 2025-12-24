@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Tuple, Any, Dict
 from google import genai
 from google.genai import types
@@ -26,9 +27,7 @@ class DSPGenerator:
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=60),
-        retry=retry_if_exception_type(
-            Exception
-        ),  # Catching base Exception as SDK errors vary
+        retry=retry_if_exception_type(Exception),
         before_sleep=lambda retry_state: logger.warning(
             f"Rate limited or API error. Retrying... (Attempt {retry_state.attempt_number})"
         ),
@@ -43,6 +42,18 @@ class DSPGenerator:
         if not response.text:
             raise ValueError("Empty response from Gemini API")
         return response.text
+
+    def _sanitize_content(self, text: str) -> str:
+        """Removes AI artifacts like markdown code blocks and raw HTML tags."""
+        # 1. Remove markdown code block wrappers (e.g., ```markdown ... ```)
+        text = re.sub(r"```(markdown)?", "", text)
+        text = text.replace("```", "")
+
+        # 2. Remove raw HTML tags that might have been included
+        # This regex matches things like <p>, <table>, </div> etc.
+        text = re.sub(r"<[^>]+>", "", text)
+
+        return text.strip()
 
     def generate_section(
         self,
@@ -93,10 +104,12 @@ Example JSON:
             response_text = self._call_gemini(prompt=prompt)
 
             parsed_json = json.loads(response_text)
-            content = parsed_json.get(
-                "section_content", "[[ERROR: 'section_content' key not found]]"
-            )
-            return prompt, content
+            raw_content = parsed_json.get("section_content", "")
+
+            # Clean up the content before returning
+            clean_content = self._sanitize_content(text=raw_content)
+
+            return prompt, clean_content
 
         except Exception as e:
             logger.error(f"Generation failed for {section_title}: {e}")

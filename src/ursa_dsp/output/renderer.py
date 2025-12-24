@@ -1,6 +1,7 @@
 import markdown
 from typing import List, Dict, Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 from weasyprint import HTML  # type: ignore
 import logging
 from datetime import datetime
@@ -14,9 +15,9 @@ class ReportRenderer:
             loader=FileSystemLoader(templates_dir),
             autoescape=select_autoescape(["html", "xml"]),
         )
-        # Register markdown filter
-        self.env.filters["markdown"] = lambda text: markdown.markdown(
-            text, extensions=["extra"]
+        # Register markdown filter and mark output as SAFE for Jinja2
+        self.env.filters["markdown"] = lambda text: Markup(
+            markdown.markdown(text, extensions=["extra", "tables", "fenced_code"])
         )
 
     def render_html(self, project_name: str, sections: List[Dict[str, Any]]) -> str:
