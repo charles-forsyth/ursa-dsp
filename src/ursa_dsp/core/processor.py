@@ -7,6 +7,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskID
 
 from ursa_dsp.core.rag import KnowledgeBase
 from ursa_dsp.core.generator import DSPGenerator
+from ursa_dsp.core.schema import ProjectMetadata
 from ursa_dsp.output.renderer import ReportRenderer
 from ursa_dsp.utils.io import read_file_content
 
@@ -62,12 +63,20 @@ class DSPProcessor:
         return {"title": title, "content": content}
 
     def process_project(
-        self, project_identifier: str, output_dir: Optional[str] = None
+        self,
+        project_identifier: str,
+        metadata: Optional[ProjectMetadata] = None,
+        output_dir: Optional[str] = None,
     ) -> str:
         """Main execution flow with parallel generation."""
 
         # 1. Gather Info
         summary = self.get_project_summary(project_identifier)
+
+        # Prepend metadata to summary if provided
+        if metadata:
+            summary = metadata.to_summary_text() + "\n\n" + summary
+
         template = self.load_template_structure()
         full_context = self.rag.get_full_context()
 
