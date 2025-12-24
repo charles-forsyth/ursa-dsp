@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="ursa-dsp",
-    version="0.2.11",
+    version="0.2.12",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
 )
