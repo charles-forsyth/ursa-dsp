@@ -1,7 +1,7 @@
 [project]
 name = "ursa-dsp"
-version = "0.2.10"
-description = "Automated Data Security Plan Generator for UCR Research"
+version = "0.2.11"
+description = "Automated Data Security Plan Generator for Research Compliance"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -24,8 +24,8 @@ ursa-dsp = "ursa_dsp.cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=7.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
