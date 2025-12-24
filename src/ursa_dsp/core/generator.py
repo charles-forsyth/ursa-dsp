@@ -1,17 +1,19 @@
 import json
 import logging
 from typing import Tuple, Any, Dict
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from ursa_dsp.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class DSPGenerator:
-    def __init__(self, model_name: str = "gemini-3-pro") -> None:
-        # We ignore these calls because the library is untyped
-        genai.configure(api_key=settings.gemini_api_key)  # type: ignore[attr-defined]
-        self.model: Any = genai.GenerativeModel(model_name)  # type: ignore[attr-defined]
+    def __init__(self, model_name: str = "gemini-2.0-flash-exp") -> None:
+        # Note: 'gemini-3-pro' is not yet public in the SDK types, falling back to a known modern model or user input
+        # However, we will respect the passed model_name
+        self.model_name = model_name
+        self.client = genai.Client(api_key=settings.gemini_api_key)
 
     def generate_section(
         self,
@@ -54,16 +56,24 @@ Example JSON:
 """
         try:
             logger.info(f"Generating content for: {section_title}")
-            response = self.model.generate_content(prompt)
-
-            # Clean and parse JSON
-            clean_json = response.text.strip().replace("```json", "").replace("```", "")
-            parsed_json = json.loads(clean_json)
-            content = parsed_json.get(
-                "section_content", "[[ERROR: 'section_content' key not found]]"
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
             )
 
-            return prompt, content
+            # Parse JSON response directly if supported, or text
+            if response.text:
+                parsed_json = json.loads(response.text)
+                content = parsed_json.get(
+                    "section_content", "[[ERROR: 'section_content' key not found]]"
+                )
+                return prompt, content
+            else:
+                return prompt, "[[ERROR: Empty response from API]]"
+
         except Exception as e:
             logger.error(f"Generation failed for {section_title}: {e}")
             return prompt, f"[[ERROR: Generation failed: {e}]]"
@@ -79,7 +89,7 @@ You are an expert Research Compliance Officer. Your task is to analyze the follo
 **Instructions:**
 1. Extract the following fields. If a field is not explicitly stated, infer a reasonable guess based on the context (e.g., if "genomic data" is mentioned, classification might be P4/CUI).
 2. If you absolutely cannot infer a value, use a generic placeholder like "Unknown".
-3. Return **ONLY** a valid JSON object. Do not include markdown code blocks.
+3. Return **ONLY** a valid JSON object.
 
 **Schema to Fill:**
 {{
@@ -99,10 +109,19 @@ You are an expert Research Compliance Officer. Your task is to analyze the follo
 """
         try:
             logger.info("Extracting metadata from summary...")
-            response = self.model.generate_content(prompt)
-            clean_json = response.text.strip().replace("```json", "").replace("```", "")
-            data: Dict[str, Any] = json.loads(clean_json)
-            return data
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
+            )
+
+            if response.text:
+                data: Dict[str, Any] = json.loads(response.text)
+                return data
+            return {}
+
         except Exception as e:
             logger.error(f"Metadata extraction failed: {e}")
             return {}
