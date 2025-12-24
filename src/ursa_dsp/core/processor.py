@@ -21,15 +21,19 @@ class DSPProcessor:
         self.renderer = ReportRenderer()
 
     def get_project_summary(self, project_identifier: str) -> str:
-        """Resolves project summary."""
+        """Resolves project summary. Returns empty string if identifier doesn't point to a file."""
         if os.path.exists(project_identifier) and os.path.isfile(project_identifier):
-            return read_file_content(project_identifier)
+            return read_file_content(path=project_identifier)
 
         summary_path = os.path.join("projects", project_identifier, "Summary.md")
         if os.path.exists(summary_path):
-            return read_file_content(summary_path)
+            return read_file_content(path=summary_path)
 
-        raise FileNotFoundError(f"Could not find summary for '{project_identifier}'")
+        # If it's not a file/standard path, we assume the summary is missing and will rely on metadata
+        logger.debug(
+            f"Summary file not found for {project_identifier}. Proceeding with identifier name."
+        )
+        return ""
 
     def load_template_structure(self) -> List[Dict[str, Any]]:
         template_path = os.path.join("templates", "dsp_template_structure.json")
@@ -54,10 +58,12 @@ class DSPProcessor:
         title = section["title"]
         body = section["body"]
 
-        # Determine the order index from the section if available, otherwise 0 (handled later)
-        # Actually, we will just return the result and sort by original index later.
-
-        _, content = self.generator.generate_section(title, body, summary, full_context)
+        _, content = self.generator.generate_section(
+            section_title=title,
+            section_body=body,
+            project_summary=summary,
+            full_context=full_context,
+        )
 
         progress.advance(task_id)
         return {"title": title, "content": content}
@@ -71,15 +77,20 @@ class DSPProcessor:
         """Main execution flow with parallel generation."""
 
         # 1. Gather Info
-        summary = self.get_project_summary(project_identifier)
+        summary = self.get_project_summary(project_identifier=project_identifier)
 
         # Prepend metadata to summary if provided
         if metadata:
-            summary = metadata.to_summary_text() + "\n\n" + summary
+            summary = (
+                metadata.to_summary_text()
+                + "\n\n"
+                + (summary if summary else "No additional summary provided.")
+            )
 
         template = self.load_template_structure()
         full_context = self.rag.get_full_context()
 
+        # Resolve project name for output files
         project_name = (
             os.path.basename(project_identifier).replace(".md", "")
             if os.path.isfile(project_identifier)
@@ -90,11 +101,6 @@ class DSPProcessor:
             output_dir = os.path.join("projects", project_name)
 
         os.makedirs(output_dir, exist_ok=True)
-
-        generated_sections: List[Dict[str, Any]] = [
-            {} for _ in template
-        ]  # Pre-allocate to maintain order?
-        # Better strategy: Generate (index, result) tuples and sort.
 
         # 2. Parallel Generation
         logger.info(f"Starting parallel generation for {len(template)} sections...")
@@ -111,15 +117,14 @@ class DSPProcessor:
             )
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                # Map futures to their index to preserve order
                 future_to_index = {
                     executor.submit(
                         self.process_section,
-                        section,
-                        summary,
-                        full_context,
-                        progress,
-                        main_task,
+                        section=section,
+                        summary=summary,
+                        full_context=full_context,
+                        progress=progress,
+                        task_id=main_task,
                     ): i
                     for i, section in enumerate(template)
                 }
@@ -144,7 +149,7 @@ class DSPProcessor:
                             )
                         )
 
-        # Sort results by original index to ensure document flow matches template
+        # Sort results by original index
         results.sort(key=lambda x: x[0])
         generated_sections = [data for _, data in results]
 
@@ -153,12 +158,14 @@ class DSPProcessor:
         with open(log_path, "w") as f:
             json.dump(generated_sections, f, indent=2)
 
-        html_content = self.renderer.render_html(project_name, generated_sections)
+        html_content = self.renderer.render_html(
+            project_name=project_name, sections=generated_sections
+        )
         html_path = os.path.join(output_dir, f"{project_name}_dsp.html")
         with open(html_path, "w") as f:
             f.write(html_content)
 
         pdf_path = os.path.join(output_dir, f"{project_name}_dsp.pdf")
-        self.renderer.generate_pdf(html_content, pdf_path)
+        self.renderer.generate_pdf(html_content=html_content, output_path=pdf_path)
 
         return pdf_path

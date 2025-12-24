@@ -20,74 +20,108 @@ console = Console()
 
 
 def run_wizard(
-    summary_path: str, defaults: Optional[Dict[str, Any]] = None
+    summary_path: Optional[str] = None, defaults: Optional[Dict[str, Any]] = None
 ) -> ProjectMetadata:
-    """Interactively gathers project metadata, using AI-extracted defaults."""
+    """Interactively gathers project metadata, using AI-extracted defaults if available."""
     console.rule("[bold blue]Ursa DSP: Interactive Wizard[/]")
-    console.print(f"Creating DSP for summary: [cyan]{summary_path}[/]")
-
-    if defaults is None:
-        defaults = {}
+    if summary_path:
+        console.print(f"Creating DSP based on summary: [cyan]{summary_path}[/]")
     else:
+        console.print("Creating a new DSP from scratch.")
+
+    if defaults:
         console.print("[dim]Defaults pre-filled from AI analysis of summary.[/]\n")
 
     return ProjectMetadata(
         project_name=Prompt.ask(
-            "Project Name", default=defaults.get("project_name", "My Research Project")
+            "Project Name",
+            default=defaults.get("project_name", "My Research Project")
+            if defaults
+            else "My Research Project",
         ),
         pi_name=Prompt.ask(
-            "Principal Investigator (PI)", default=defaults.get("pi_name", "Unknown PI")
+            "Principal Investigator (PI)",
+            default=defaults.get("pi_name", "Unknown PI") if defaults else "Unknown PI",
         ),
         uisl_name=Prompt.ask(
             "Unit Information Security Lead (UISL)",
-            default=defaults.get("uisl_name", "Unknown UISL"),
+            default=defaults.get("uisl_name", "Unknown UISL")
+            if defaults
+            else "Unknown UISL",
         ),
         department=Prompt.ask(
-            "Department/Unit", default=defaults.get("department", "Research Computing")
+            "Department/Unit",
+            default=defaults.get("department", "Research Computing")
+            if defaults
+            else "Research Computing",
         ),
         classification=Prompt.ask(
             "Data Classification",
             choices=[e.value for e in DataClassification],
-            default=defaults.get("classification", DataClassification.P4.value),
+            default=defaults.get("classification", DataClassification.P4.value)
+            if defaults
+            else DataClassification.P4.value,
         ),
         is_cui=Confirm.ask(
-            "Does this project involve CUI?", default=defaults.get("is_cui", False)
+            "Does this project involve CUI?",
+            default=defaults.get("is_cui", False) if defaults else False,
         ),
         data_provider=Prompt.ask(
             "Data Provider (e.g., NIH, Army)",
-            default=defaults.get("data_provider", "External Agency"),
+            default=defaults.get("data_provider", "External Agency")
+            if defaults
+            else "External Agency",
         ),
         infrastructure=Prompt.ask(
             "Infrastructure Type",
             choices=[e.value for e in InfrastructureType],
-            default=defaults.get(
-                "infrastructure", InfrastructureType.WORKSTATION.value
-            ),
+            default=defaults.get("infrastructure", InfrastructureType.WORKSTATION.value)
+            if defaults
+            else InfrastructureType.WORKSTATION.value,
         ),
         os_type=Prompt.ask(
-            "Operating System", default=defaults.get("os_type", "Ubuntu Linux 22.04")
+            "Operating System",
+            default=defaults.get("os_type", "Ubuntu Linux 22.04")
+            if defaults
+            else "Ubuntu Linux 22.04",
         ),
         transfer_method=Prompt.ask(
             "Transfer Method",
-            default=defaults.get("transfer_method", "Encrypted USB / Globus"),
+            default=defaults.get("transfer_method", "Encrypted USB / Globus")
+            if defaults
+            else "Encrypted USB / Globus",
         ),
         retention_date=Prompt.ask(
             "Project End Date (YYYY-MM-DD)",
-            default=defaults.get("retention_date", "2030-01-01"),
+            default=defaults.get("retention_date", "2030-01-01")
+            if defaults
+            else "2030-01-01",
         ),
         destruction_method=Prompt.ask(
             "Destruction Method",
-            default=defaults.get("destruction_method", "DoD 5220.22-M 3-pass wipe"),
+            default=defaults.get("destruction_method", "DoD 5220.22-M 3-pass wipe")
+            if defaults
+            else "DoD 5220.22-M 3-pass wipe",
         ),
     )
 
 
 @app.command()
 def generate(
-    summary: str = typer.Option(..., "--summary", "-s", help="Path to Summary.md"),
-    output_dir: Optional[str] = typer.Option(None, "--output", "-o"),
+    summary: Optional[str] = typer.Option(
+        None,
+        "--summary",
+        "-s",
+        help="Path to Summary.md (Optional if using --interactive)",
+    ),
+    output_dir: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Directory to save the results"
+    ),
     interactive: bool = typer.Option(
-        False, "--interactive", "-i", help="Run interactive wizard with AI pre-fill"
+        False,
+        "--interactive",
+        "-i",
+        help="Run interactive wizard (with AI pre-fill if --summary is provided)",
     ),
     # CLI Flags for Power Users
     project_name: str = typer.Option("My Research Project", help="Project Name"),
@@ -102,11 +136,12 @@ def generate(
     infrastructure: InfrastructureType = typer.Option(
         InfrastructureType.WORKSTATION, help="Infrastructure Type"
     ),
-    verbose: bool = typer.Option(False, "--verbose", "-v"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose debug logging"
+    ),
 ) -> None:
     """
     Generate a Data Security Plan (DSP).
-    Use --interactive for a guided experience (with AI pre-fill), or provide flags for automation.
     """
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -115,21 +150,21 @@ def generate(
     metadata = None
 
     if interactive:
-        # Step 1: Read Summary
-        console.print("[cyan]Reading summary...[/]")
-        try:
-            summary_text = processor.get_project_summary(summary)
+        defaults = None
+        if summary:
+            console.print("[cyan]Reading summary for AI pre-fill...[/]")
+            try:
+                summary_text = processor.get_project_summary(project_identifier=summary)
+                console.print("[cyan]Analyzing project with Gemini 3 Pro...[/]")
+                defaults = processor.generator.extract_metadata(
+                    summary_text=summary_text
+                )
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning: AI analysis failed ({e}). Continuing with manual wizard.[/]"
+                )
 
-            # Step 2: Extract Metadata via AI
-            console.print("[cyan]Analyzing project with Gemini 3 Pro...[/]")
-            defaults = processor.generator.extract_metadata(summary_text)
-
-            # Step 3: Run Wizard with Defaults
-            metadata = run_wizard(summary, defaults)
-
-        except Exception:
-            console.print("[bold red]Error during extraction:[/]")
-            raise typer.Exit(code=1)
+        metadata = run_wizard(summary_path=summary, defaults=defaults)
 
     else:
         # Construct from flags
@@ -142,7 +177,6 @@ def generate(
             is_cui=cui,
             data_provider=provider,
             infrastructure=infrastructure,
-            # Defaults for fields not yet exposed as flags
             os_type="Linux",
             transfer_method="Secure Transfer",
             retention_date="2030-01-01",
@@ -150,13 +184,20 @@ def generate(
         )
 
     try:
-        console.rule(f"[bold blue]Processing: {summary}[/]")
-        pdf_path = processor.process_project(summary, metadata, output_dir)
+        # If summary is None, we pass None and the processor handles it (using metadata only)
+        display_name = summary if summary else metadata.project_name
+        console.rule(f"[bold blue]Processing: {display_name}[/]")
+
+        pdf_path = processor.process_project(
+            project_identifier=summary if summary else metadata.project_name,
+            metadata=metadata,
+            output_dir=output_dir,
+        )
         console.print(
             f"\n[bold green]Success![/] DSP generated at: [underline]{pdf_path}[/]"
         )
-    except Exception:
-        console.print("\n[bold red]Error:[/]")
+    except Exception as e:
+        console.print(f"\n[bold red]Error:[/] {e}")
         if verbose:
             console.print_exception()
         raise typer.Exit(code=1)
@@ -165,7 +206,7 @@ def generate(
 @app.command()
 def version() -> None:
     """Show version info."""
-    print("Ursa DSP v0.2.7")
+    print("Ursa DSP v0.2.8")
 
 
 if __name__ == "__main__":
