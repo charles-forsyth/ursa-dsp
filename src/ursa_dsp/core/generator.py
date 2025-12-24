@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Tuple, Any
+from typing import Tuple, Any, Dict
 import google.generativeai as genai
 from ursa_dsp.config import settings
 
@@ -67,3 +67,42 @@ Example JSON:
         except Exception as e:
             logger.error(f"Generation failed for {section_title}: {e}")
             return prompt, f"[[ERROR: Generation failed: {e}]]"
+
+    def extract_metadata(self, summary_text: str) -> Dict[str, Any]:
+        """Uses Gemini to extract structured metadata from the project summary."""
+        prompt = f"""
+You are an expert Research Compliance Officer. Your task is to analyze the following research project summary and extract specific metadata fields to populate a Data Security Plan.
+
+**Project Summary:**
+{summary_text}
+
+**Instructions:**
+1. Extract the following fields. If a field is not explicitly stated, infer a reasonable guess based on the context (e.g., if "genomic data" is mentioned, classification might be P4/CUI).
+2. If you absolutely cannot infer a value, use a generic placeholder like "Unknown".
+3. Return **ONLY** a valid JSON object. Do not include markdown code blocks.
+
+**Schema to Fill:**
+{{
+    "project_name": "Official title or short name",
+    "pi_name": "Name of Principal Investigator",
+    "uisl_name": "Name of IT Security Lead",
+    "department": "Department or Unit",
+    "classification": "One of: P3 (Moderate), P4 (High), HIPAA, CUI, Export Controlled",
+    "is_cui": true/false,
+    "data_provider": "Who is providing the data? (e.g. NIH)",
+    "infrastructure": "One of: Standalone Workstation, UCR Research Cluster, Cloud (AWS/GCP), Air-gapped Server",
+    "os_type": "Operating System (e.g. Linux, Windows)",
+    "transfer_method": "How data moves (e.g. Globus, USB)",
+    "retention_date": "YYYY-MM-DD (Estimate 5 years out if unknown)",
+    "destruction_method": "e.g. DoD 5220.22-M"
+}}
+"""
+        try:
+            logger.info("Extracting metadata from summary...")
+            response = self.model.generate_content(prompt)
+            clean_json = response.text.strip().replace("```json", "").replace("```", "")
+            data: Dict[str, Any] = json.loads(clean_json)
+            return data
+        except Exception as e:
+            logger.error(f"Metadata extraction failed: {e}")
+            return {}
