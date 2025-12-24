@@ -94,7 +94,7 @@ def run_wizard(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="""
-🐻 Ursa DSP Generator (v0.3.0)
+🐻 Ursa DSP Generator (v0.3.1)
 ==============================
 An AI-powered agent for creating high-assurance Data Security Plans (DSP).
 
@@ -176,7 +176,7 @@ Examples:
     args = parser.parse_args()
 
     if args.version:
-        print("Ursa DSP v0.3.0")
+        print("Ursa DSP v0.3.1")
         sys.exit(0)
 
     if args.verbose:
