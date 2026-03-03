@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class DSPGenerator:
-    def __init__(self, model_name: str = "gemini-3-pro-preview") -> None:
+    def __init__(self, model_name: str = "gemini-3.1-pro-preview") -> None:
         """
         Initializes the Gemini 3 Generator.
         Strictly uses the specified model version.
